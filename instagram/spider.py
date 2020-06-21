@@ -33,6 +33,8 @@ def get_blogger_homepage_url(default_name='garbimuguruza'):
     blogger_name = get_ins_blogger_name()
     if re.match(r'(\s|\n|\t)*', blogger_name).end() or blogger_name == '':
         blogger_name = default_name
+    '''URL后有`/`和没有`/`的HTML内容差别较大！！！
+    '''
     return 'https://www.instagram.com/{}/'.format(blogger_name)
 
 
@@ -115,6 +117,7 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
     url = 'https://www.instagram.com/graphql/query/?'
     # TODO::自己解析的query_hash值有问题
     query_hash = special_query_hash
+
     while has_next_page:  # 判断是否有下一页
         # TODO::first为12时，会报错，未排查问题
         params = {
@@ -123,6 +126,7 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
             'variables': '{{"id":"{}","first":50,"after":"{}"}}'.format(user_id, after),
         }
 
+        # TODO::熟悉json库的主要作用和使用方法
         # 另一种生成URI的方法
         # variables = {
         #     'id': user_id,
@@ -135,8 +139,8 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
         # response = requests.get(next_url, headers=headers, proxies=proxies)
 
         html = get_page_html(url, params=params, headers=headers, proxies=proxies)
-
         content = json.loads(html)
+
         edges = content['data']['user']['edge_owner_to_timeline_media']['edges']
         page_info = content['data']['user']['edge_owner_to_timeline_media']['page_info']
         has_next_page = page_info['has_next_page']
@@ -147,14 +151,10 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
             if edge['node']['is_video']:
                 video_url = edge['node']['video_url']
                 print('video: {}'.format(video_url))
-                pic_video_cnt += 1
-                pic_video_uris['video'].append(video_url)
                 uris['video'].append(video_url)
             else:
                 pic_url = edge['node']['display_url']
                 print('picture: {}'.format(pic_url))
-                pic_video_cnt += 1
-                pic_video_uris['picture'].append(pic_url)
                 uris['picture'].append(pic_url)
         yield uris
 
@@ -223,7 +223,7 @@ def save_video(save_path, uri):
 
 def save_by_thread(save_pic_path, save_video_path, uris):
     '''
-    利用多线程下载图片、视频（整体速度偏快）
+    利用多线程下载图片、视频（整体速度偏快）（推荐）
     :param save_pic_path: 图片保存路径
     :param save_video_path: 视频保存路径
     :param uris: 图片、视频标识符
@@ -266,14 +266,12 @@ def run():
     crawl_count = sum(len(x) for x in first_uris.values())
 
     save_pic_path, save_video_path = mkdir_save_path(url)
-    # save_by_timeline(save_pic_path, save_video_path, first_uris)
     save_by_thread(save_pic_path, save_video_path, first_uris)
 
     query_hash = get_query_hash()
     parse_next_page(query_hash, user_id, has_next_page, after)
 
     for uris in parse_next_page(query_hash, user_id, has_next_page, after):
-        # save_by_timeline(save_pic_path, save_video_path, uris)
         save_by_thread(save_pic_path, save_video_path, uris)
         crawl_count += sum(len(x) for x in uris.values())
 
