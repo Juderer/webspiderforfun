@@ -14,9 +14,6 @@ import threading
 import hashlib
 from instagram.config import headers, proxies, query_hash_uri, special_query_hash
 
-pic_video_cnt = 0
-pic_video_uris = {'picture': [], 'video': []}
-
 
 def get_ins_blogger_name():
     '''
@@ -83,14 +80,10 @@ def parse_first_page(url):
         if edge['node']['is_video']:
             video_url = edge['node']['display_url']
             print('video: {}'.format(video_url))
-            pic_video_cnt += 1
-            pic_video_uris['picture'].append(video_url)
             uris['picture'].append(video_url)
         else:
             pic_url = edge['node']['display_url']
             print('picture: {}'.format(pic_url))
-            pic_video_cnt += 1
-            pic_video_uris['picture'].append(pic_url)
             uris['picture'].append(pic_url)
 
     return user_id, count, has_next_page, after, uris
@@ -183,6 +176,7 @@ def mkdir_save_path(url):
     return save_pic_path, save_video_path
 
 
+# TODO::方法实现有问题，相同str会有不同的hash值，未解决
 def md5(string):
     ''''''
     m = hashlib.md5()
@@ -193,7 +187,6 @@ def md5(string):
 
 def save_picture(save_path, uri):
     # pic_name = '{}.jpg'.format(md5(uri))
-    # print(pic_name)
     print('Downloading picture: {}'.format(uri))
     response = requests.get(uri, headers=headers, proxies=proxies)
     pic_name = '{}.jpg'.format(hashlib.md5(response.content).hexdigest())
@@ -236,10 +229,11 @@ def save_by_timeline(save_pic_path, save_video_path, uris):
 
 
 def run():
-    global pic_video_uris
     url = get_blogger_homepage_url()
     # url = 'https://www.instagram.com/garbimuguruza/'
     user_id, count, has_next_page, after, first_uris = parse_first_page(url)
+
+    crawl_count = sum(len(x) for x in first_uris.values())
 
     save_pic_path, save_video_path = mkdir_save_path(url)
     # save_by_timeline(save_pic_path, save_video_path, first_uris)
@@ -251,12 +245,13 @@ def run():
     for uris in parse_next_page(query_hash, user_id, has_next_page, after):
         # save_by_timeline(save_pic_path, save_video_path, uris)
         save_by_thread(save_pic_path, save_video_path, uris)
+        crawl_count += sum(len(x) for x in uris.values())
 
-    return count
+    return count==crawl_count
 
 
 if __name__ == '__main__':
-    if run() == pic_video_cnt:
+    if run():
         print('Data crawl completed！')
     else:
         # raise ValueError('爬取数据与实际数据不匹配')
