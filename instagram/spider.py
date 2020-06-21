@@ -160,7 +160,11 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
 
 
 def mkdir_save_path(url):
-    ''''''
+    '''
+    可选调用函数，创建图片、视频 保存目录
+    :param url: 博主主页
+    :return: 图片、视频保存路径
+    '''
     DATA_BASE_DIR = '{}/data/'.format(os.path.dirname(os.path.abspath(__file__)))
     if not os.path.exists(DATA_BASE_DIR):
         os.mkdir(DATA_BASE_DIR)
@@ -186,6 +190,12 @@ def md5(string):
 
 
 def save_picture(save_path, uri):
+    '''
+    保存图片
+    :param save_path: 图片保存路径
+    :param uri: 图片标识符
+    :return:
+    '''
     # pic_name = '{}.jpg'.format(md5(uri))
     print('Downloading picture: {}'.format(uri))
     response = requests.get(uri, headers=headers, proxies=proxies)
@@ -196,6 +206,12 @@ def save_picture(save_path, uri):
 
 
 def save_video(save_path, uri):
+    '''
+    保存视频
+    :param save_path: 视频保存路径
+    :param uri: 视频标识符
+    :return:
+    '''
     # video_name = '{}.jpg'.format(md5(uri))
     print('Downloading video: {}'.format(uri))
     response = requests.get(uri, headers=headers, proxies=proxies)
@@ -206,6 +222,13 @@ def save_video(save_path, uri):
 
 
 def save_by_thread(save_pic_path, save_video_path, uris):
+    '''
+    利用多线程下载图片、视频（整体速度偏快）
+    :param save_pic_path: 图片保存路径
+    :param save_video_path: 视频保存路径
+    :param uris: 图片、视频标识符
+    :return:
+    '''
     t_objs = []
     pic_uris, video_uris = uris.values()
     for pic_uri in pic_uris:
@@ -221,6 +244,13 @@ def save_by_thread(save_pic_path, save_video_path, uris):
 
 
 def save_by_timeline(save_pic_path, save_video_path, uris):
+    '''
+    按照时间线下载图片、视频（整体速度慢）
+    :param save_pic_path: 图片保存路径
+    :param save_video_path: 视频保存路径
+    :param uris: 图片、视频标识符
+    :return:
+    '''
     pic_uris, video_uris = uris.values()
     for pic_uri in pic_uris:
         save_picture(save_pic_path, pic_uri)
@@ -247,7 +277,7 @@ def run():
         save_by_thread(save_pic_path, save_video_path, uris)
         crawl_count += sum(len(x) for x in uris.values())
 
-    return count==crawl_count
+    return count == crawl_count
 
 
 if __name__ == '__main__':
