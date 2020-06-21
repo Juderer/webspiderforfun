@@ -7,11 +7,15 @@
 @Info       : Spider for Instagram
 '''
 import os
+import sys
 import re
 import requests
 import json
 import threading
 import hashlib
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(BASE_DIR))
 from instagram.config import headers, proxies, query_hash_uri, special_query_hash
 
 
@@ -20,7 +24,10 @@ def get_ins_blogger_name():
     用户输入Instagram博主用户名
     :return: 博主用户名
     '''
-    blogger_name = str(input("Please input the instagram blogger's name: "))
+    if len(sys.argv) >= 2:
+        blogger_name = sys.argv[1]
+    else:
+        blogger_name = str(input("Please input the instagram blogger's name: "))
     return blogger_name.strip()
 
 
@@ -165,7 +172,7 @@ def mkdir_save_path(url):
     :param url: 博主主页
     :return: 图片、视频保存路径
     '''
-    DATA_BASE_DIR = '{}/data/'.format(os.path.dirname(os.path.abspath(__file__)))
+    DATA_BASE_DIR = '{}/data/'.format(BASE_DIR)
     if not os.path.exists(DATA_BASE_DIR):
         os.mkdir(DATA_BASE_DIR)
     user_name = re.split(r'/', url)[-2]
