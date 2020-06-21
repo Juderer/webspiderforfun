@@ -6,13 +6,17 @@
 @DevTool    : PyCharm
 @Info       : Spider for Instagram
 '''
+import os
 import re
 import requests
 import json
+import threading
+import hashlib
 from instagram.config import headers, proxies, query_hash_uri, special_query_hash
 
-
 pic_video_cnt = 0
+pic_video_uris = {'picture': [], 'video': []}
+
 
 def get_ins_blogger_name():
     '''
@@ -35,17 +39,16 @@ def get_blogger_homepage_url(default_name='garbimuguruza'):
     return 'https://www.instagram.com/{}/'.format(blogger_name)
 
 
-# TODO::整合获取html内容功能，使其更完善更可用
-def get_html(url):
+def get_page_html(url, **kwargs):
     '''
-    获取博主主页内容
-    :param url: 博主主页
-    :return: html内容
+    获取指定URL的内容
+    :param url: URL for the new :class:`Request` object.
+    :param kwargs: Optional arguments that ``request`` takes.
+    :return: URL内容（str类型）
     '''
     try:
-        response = requests.get(url, headers=headers, proxies=proxies)
+        response = requests.get(url, **kwargs)
         if response.status_code == 200:
-            print('Visit successfully')
             html = response.text
             return html
         else:
@@ -55,14 +58,16 @@ def get_html(url):
 
 
 def parse_first_page(url):
-    ''''''
-    global pic_video_cnt
+    '''
+    分析博主首页内容
+    :param url:
+    :return: 博主id，发布内容总数，是否有下一页，初始游标
+    '''
+    global pic_video_cnt, pic_video_uris
     print('Begin to prase the first page: {url}'.format(url=url))
-    html = get_html(url)
+    html = get_page_html(url, headers=headers, proxies=proxies)
     pattern = re.compile('.*window._sharedData = (.*?);</script>', re.S)
     item = pattern.findall(html)
-    # with open('./data/shared_data.json', 'w') as f:
-    #     f.write(item[0])
     data = json.loads(item[0])
 
     graphql = data['entry_data']['ProfilePage'][0]['graphql']
@@ -78,10 +83,12 @@ def parse_first_page(url):
             video_url = edge['node']['display_url']
             print('video: {}'.format(video_url))
             pic_video_cnt += 1
+            pic_video_uris['picture'].append(video_url)
         else:
             pic_url = edge['node']['display_url']
             print('picture: {}'.format(pic_url))
             pic_video_cnt += 1
+            pic_video_uris['picture'].append(pic_url)
 
     return user_id, count, has_next_page, after
 
@@ -92,24 +99,32 @@ def get_query_hash(uri=query_hash_uri):
     :param uri: js文件URI
     :return: query_hash
     '''
-    html = get_html(uri)
+    html = get_page_html(uri, headers=headers, proxies=proxies)
     pattern = re.compile(r'queryId:"(.*?)",', re.S)
     query_hashs = pattern.findall(html)
     print('query hash: {}'.format(query_hashs))
     return query_hashs[2]
 
 
-def get_next_page(query_hash, user_id, has_next_page, after):
-    ''''''
-    global pic_video_cnt
+def parse_next_page(query_hash, user_id, has_next_page, after):
+    '''
+    解析利用js动态生成的博主内容
+    :param query_hash: 哈希码
+    :param user_id: 博主ID
+    :param has_next_page: 有无下一页
+    :param after: 游标
+    :return:
+    '''
+    global pic_video_cnt, pic_video_uris
     url = 'https://www.instagram.com/graphql/query/?'
+    # TODO::自己解析的query_hash值有问题
     query_hash = special_query_hash
     while has_next_page:  # 判断是否有下一页
-        #TODO::first为12时，会报错，未排查问题
+        # TODO::first为12时，会报错，未排查问题
         params = {
             'query_hash': query_hash,
             # 大括号是特殊转义字符，如果需要原始的大括号,用{{代替{
-            'variables': '{{"id":"{}","first":50,"after":"{}"}}'.format(user_id, after),
+            'variables': '{{"id":"{}","first":30,"after":"{}"}}'.format(user_id, after),
         }
 
         # 另一种生成URI的方法
@@ -123,15 +138,7 @@ def get_next_page(query_hash, user_id, has_next_page, after):
         # print(next_url)
         # response = requests.get(next_url, headers=headers, proxies=proxies)
 
-        try:
-            response = requests.get(url, params=params, headers=headers, proxies=proxies)
-        except Exception as e:
-            raise e
-
-        if response.status_code == 200:
-            html = response.text
-        else:
-            raise Exception('请求网页源代码错误, 错误状态码：', response.status_code)
+        html = get_page_html(url, params=params, headers=headers, proxies=proxies)
 
         content = json.loads(html)
         edges = content['data']['user']['edge_owner_to_timeline_media']['edges']
@@ -144,20 +151,98 @@ def get_next_page(query_hash, user_id, has_next_page, after):
                 video_url = edge['node']['video_url']
                 print('video: {}'.format(video_url))
                 pic_video_cnt += 1
+                pic_video_uris['video'].append(video_url)
             else:
                 pic_url = edge['node']['display_url']
                 print('picture: {}'.format(pic_url))
                 pic_video_cnt += 1
+                pic_video_uris['picture'].append(pic_url)
+
     print(pic_video_cnt)
 
+
+def mkdir_save_path(url):
+    ''''''
+    DATA_BASE_DIR = '{}/data/'.format(os.path.dirname(os.path.abspath(__file__)))
+    if not os.path.exists(DATA_BASE_DIR):
+        os.mkdir(DATA_BASE_DIR)
+    user_name = re.split(r'/', url)[-2]
+    if not os.path.exists(DATA_BASE_DIR + user_name):
+        os.mkdir(DATA_BASE_DIR + user_name)
+    save_pic_path = '{dir}{name}/pictures/'.format(dir=DATA_BASE_DIR, name=user_name)
+    save_video_path = '{dir}{name}/videos/'.format(dir=DATA_BASE_DIR, name=user_name)
+    for path in (save_pic_path, save_video_path):
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+    return save_pic_path, save_video_path
+
+
+def md5(string):
+    ''''''
+    m = hashlib.md5()
+    m.update(string.encode("utf8"))
+    # print(m.hexdigest())
+    return m.hexdigest()
+
+
+def save_picture(save_path, uri):
+    # pic_name = '{}.jpg'.format(md5(uri))
+    # print(pic_name)
+    print('Downloading picture: {}'.format(uri))
+    response = requests.get(uri, headers=headers, proxies=proxies)
+    pic_name = '{}.jpg'.format(hashlib.md5(response.content).hexdigest())
+    if not os.path.exists(save_path + pic_name):
+        with open(save_path + pic_name, 'wb') as f:
+            f.write(response.content)
+
+
+def save_video(save_path, uri):
+    # video_name = '{}.jpg'.format(md5(uri))
+    print('Downloading video: {}'.format(uri))
+    response = requests.get(uri, headers=headers, proxies=proxies)
+    video_name = '{}.mp4'.format(hashlib.md5(response.content).hexdigest())
+    if not os.path.exists(save_path + video_name):
+        with open(save_path + video_name, 'wb') as f:
+            f.write(response.content)
+
+
+def save_by_thread(save_pic_path, save_video_path, uris):
+    t_objs = []
+    pic_uris, video_uris = uris.values()
+    for pic_uri in pic_uris:
+        t = threading.Thread(target=save_picture, args=(save_pic_path, pic_uri))
+        t.start()
+        t_objs.append(t)
+    for video_uri in video_uris:
+        t = threading.Thread(target=save_video, args=(save_video_path, video_uri))
+        t.start()
+        t_objs.append(t)
+    for t in t_objs:
+        t.join()
+
+
+def save_by_timeline(save_pic_path, save_video_path, uris):
+    pic_uris, video_uris = uris.values()
+    # for pic_uri in pic_uris:
+    #     save_picture(save_pic_path, pic_uri)
+    for video_uri in video_uris:
+        save_video(save_video_path, video_uri)
+
+
 def run():
-    url = get_blogger_homepage_url()
-    # url = 'https://www.instagram.com/garbimuguruza/'
+    global pic_video_uris
+    # url = get_blogger_homepage_url()
+    url = 'https://www.instagram.com/garbimuguruza/'
     user_id, count, has_next_page, after = parse_first_page(url)
     query_hash = get_query_hash()
-    get_next_page(query_hash, user_id, has_next_page, after)
+    parse_next_page(query_hash, user_id, has_next_page, after)
+
+    save_pic_path, save_video_path = mkdir_save_path(url)
+    save_by_timeline(save_pic_path, save_video_path, pic_video_uris)
 
     return count
+
 
 if __name__ == '__main__':
     if run() == pic_video_cnt:
