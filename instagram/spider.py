@@ -78,19 +78,22 @@ def parse_first_page(url):
     after = page_info['end_cursor']
     edges = graphql['user']['edge_owner_to_timeline_media']['edges']
 
+    uris = {'picture': [], 'video': []}
     for edge in edges:
         if edge['node']['is_video']:
             video_url = edge['node']['display_url']
             print('video: {}'.format(video_url))
             pic_video_cnt += 1
             pic_video_uris['picture'].append(video_url)
+            uris['picture'].append(video_url)
         else:
             pic_url = edge['node']['display_url']
             print('picture: {}'.format(pic_url))
             pic_video_cnt += 1
             pic_video_uris['picture'].append(pic_url)
+            uris['picture'].append(pic_url)
 
-    return user_id, count, has_next_page, after
+    return user_id, count, has_next_page, after, uris
 
 
 def get_query_hash(uri=query_hash_uri):
@@ -124,7 +127,7 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
         params = {
             'query_hash': query_hash,
             # 大括号是特殊转义字符，如果需要原始的大括号,用{{代替{
-            'variables': '{{"id":"{}","first":30,"after":"{}"}}'.format(user_id, after),
+            'variables': '{{"id":"{}","first":50,"after":"{}"}}'.format(user_id, after),
         }
 
         # 另一种生成URI的方法
@@ -146,19 +149,21 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
         has_next_page = page_info['has_next_page']
         after = page_info['end_cursor']
 
+        uris = {'picture': [], 'video': []}
         for edge in edges:
             if edge['node']['is_video']:
                 video_url = edge['node']['video_url']
                 print('video: {}'.format(video_url))
                 pic_video_cnt += 1
                 pic_video_uris['video'].append(video_url)
+                uris['video'].append(video_url)
             else:
                 pic_url = edge['node']['display_url']
                 print('picture: {}'.format(pic_url))
                 pic_video_cnt += 1
                 pic_video_uris['picture'].append(pic_url)
-
-    print(pic_video_cnt)
+                uris['picture'].append(pic_url)
+        yield uris
 
 
 def mkdir_save_path(url):
@@ -224,22 +229,28 @@ def save_by_thread(save_pic_path, save_video_path, uris):
 
 def save_by_timeline(save_pic_path, save_video_path, uris):
     pic_uris, video_uris = uris.values()
-    # for pic_uri in pic_uris:
-    #     save_picture(save_pic_path, pic_uri)
+    for pic_uri in pic_uris:
+        save_picture(save_pic_path, pic_uri)
     for video_uri in video_uris:
         save_video(save_video_path, video_uri)
 
 
 def run():
     global pic_video_uris
-    # url = get_blogger_homepage_url()
-    url = 'https://www.instagram.com/garbimuguruza/'
-    user_id, count, has_next_page, after = parse_first_page(url)
+    url = get_blogger_homepage_url()
+    # url = 'https://www.instagram.com/garbimuguruza/'
+    user_id, count, has_next_page, after, first_uris = parse_first_page(url)
+
+    save_pic_path, save_video_path = mkdir_save_path(url)
+    # save_by_timeline(save_pic_path, save_video_path, first_uris)
+    save_by_thread(save_pic_path, save_video_path, first_uris)
+
     query_hash = get_query_hash()
     parse_next_page(query_hash, user_id, has_next_page, after)
 
-    save_pic_path, save_video_path = mkdir_save_path(url)
-    save_by_timeline(save_pic_path, save_video_path, pic_video_uris)
+    for uris in parse_next_page(query_hash, user_id, has_next_page, after):
+        # save_by_timeline(save_pic_path, save_video_path, uris)
+        save_by_thread(save_pic_path, save_video_path, uris)
 
     return count
 
