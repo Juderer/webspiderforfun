@@ -19,6 +19,7 @@ sys.path.append(os.path.dirname(BASE_DIR))
 from instagram.config import headers, proxies, query_hash_uri, special_query_hash
 
 
+# TODO::同时处理多个用户名输入
 def get_ins_blogger_name():
     '''
     用户输入Instagram博主用户名
@@ -150,7 +151,8 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
         params = {
             'query_hash': query_hash,
             # 大括号是特殊转义字符，如果需要原始的大括号,用{{代替{
-            'variables': '{{"id":"{}","first":50,"after":"{}"}}'.format(user_id, after),
+            'variables': '{{"id":"{id}","first":50,"after":"{after}"}}'
+                .format(id=user_id, after=after),
         }
 
         # TODO::熟悉json库的主要作用和使用方法
