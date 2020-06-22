@@ -47,20 +47,40 @@ def get_blogger_homepage_url(default_name='garbimuguruza'):
 
 def get_page_html(url, **kwargs):
     '''
-    获取指定URL的内容
+    获取指定URL的HTML内容
     :param url: URL for the new :class:`Request` object.
     :param kwargs: Optional arguments that ``request`` takes.
-    :return: URL内容（str类型）
+    :return: HTML内容（str类型）
     '''
     try:
         response = requests.get(url, **kwargs)
+    except Exception as e:
+        raise e
+    else:
         if response.status_code == 200:
             html = response.text
             return html
         else:
             raise Exception('请求网页源代码错误, 错误状态码：', response.status_code)
+
+
+def get_page_content(uri, **kwargs):
+    '''
+    获取指定URI的二进制内容
+    :param url: 图片、视频资源标识符
+    :param kwargs: Optional arguments that ``request`` takes.
+    :return: 二进制内容
+    '''
+    try:
+        response = requests.get(uri, **kwargs)
     except Exception as e:
         raise e
+    else:
+        if response.status_code == 200:
+            content = response.content
+            return content
+        else:
+            raise Exception('请求网页源代码错误, 错误状态码：', response.status_code)
 
 
 def parse_first_page(url):
@@ -205,11 +225,11 @@ def save_picture(save_path, uri):
     '''
     # pic_name = '{}.jpg'.format(md5(uri))
     print('Downloading picture: {}'.format(uri))
-    response = requests.get(uri, headers=headers, proxies=proxies)
-    pic_name = '{}.jpg'.format(hashlib.md5(response.content).hexdigest())
+    content = get_page_content(uri, headers=headers, proxies=proxies)
+    pic_name = '{}.jpg'.format(hashlib.md5(content).hexdigest())
     if not os.path.exists(save_path + pic_name):
         with open(save_path + pic_name, 'wb') as f:
-            f.write(response.content)
+            f.write(content)
 
 
 def save_video(save_path, uri):
@@ -221,11 +241,11 @@ def save_video(save_path, uri):
     '''
     # video_name = '{}.jpg'.format(md5(uri))
     print('Downloading video: {}'.format(uri))
-    response = requests.get(uri, headers=headers, proxies=proxies)
-    video_name = '{}.mp4'.format(hashlib.md5(response.content).hexdigest())
+    content = get_page_content(uri, headers=headers, proxies=proxies)
+    video_name = '{}.mp4'.format(hashlib.md5(content).hexdigest())
     if not os.path.exists(save_path + video_name):
         with open(save_path + video_name, 'wb') as f:
-            f.write(response.content)
+            f.write(content)
 
 
 def save_by_thread(save_pic_path, save_video_path, uris):
