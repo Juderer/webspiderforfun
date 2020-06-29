@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 @Time       : 2020/06/21 10:33
 @Author     : Julius Lee
 @File       : spider.py
 @DevTool    : PyCharm
 @Info       : Spider for Instagram
-'''
+"""
 import os
 import sys
 import re
@@ -21,10 +21,10 @@ from instagram.config import headers, proxies, query_hash_uri, special_query_has
 
 # TODO::同时处理多个用户名输入
 def get_ins_blogger_name():
-    '''
+    """
     用户输入Instagram博主用户名
     :return: 博主用户名
-    '''
+    """
     if len(sys.argv) >= 2:
         blogger_name = sys.argv[1]
     else:
@@ -33,11 +33,11 @@ def get_ins_blogger_name():
 
 
 def get_blogger_homepage_url(default_name='garbimuguruza'):
-    '''
+    """
     获取ins博主主页URL
     :param default_name: 默认访问garbimuguruza的ins主页
     :return: URL
-    '''
+    """
     blogger_name = get_ins_blogger_name()
     if re.match(r'(\s|\n|\t)*', blogger_name).end() or blogger_name == '':
         blogger_name = default_name
@@ -47,12 +47,12 @@ def get_blogger_homepage_url(default_name='garbimuguruza'):
 
 
 def get_page_html(url, **kwargs):
-    '''
+    """
     获取指定URL的HTML内容
     :param url: URL for the new :class:`Request` object.
     :param kwargs: Optional arguments that ``request`` takes.
     :return: HTML内容（str类型）
-    '''
+    """
     try:
         response = requests.get(url, **kwargs)
     except Exception as e:
@@ -66,12 +66,12 @@ def get_page_html(url, **kwargs):
 
 
 def get_page_content(uri, **kwargs):
-    '''
+    """
     获取指定URI的二进制内容
     :param url: 图片、视频资源标识符
     :param kwargs: Optional arguments that ``request`` takes.
     :return: 二进制内容
-    '''
+    """
     try:
         response = requests.get(uri, **kwargs)
     except Exception as e:
@@ -85,11 +85,11 @@ def get_page_content(uri, **kwargs):
 
 
 def parse_first_page(url):
-    '''
+    """
     分析博主首页内容
     :param url:
     :return: 博主id，发布内容总数，是否有下一页，初始游标
-    '''
+    """
     global pic_video_cnt, pic_video_uris
     print('Begin to prase the first page: {url}'.format(url=url))
     html = get_page_html(url, headers=headers, proxies=proxies)
@@ -120,11 +120,11 @@ def parse_first_page(url):
 
 
 def get_query_hash(uri=query_hash_uri):
-    '''
+    """
     获取query_hash
     :param uri: js文件URI
     :return: query_hash
-    '''
+    """
     html = get_page_html(uri, headers=headers, proxies=proxies)
     pattern = re.compile(r'queryId:"(.*?)",', re.S)
     query_hashs = pattern.findall(html)
@@ -133,14 +133,13 @@ def get_query_hash(uri=query_hash_uri):
 
 
 def parse_next_page(query_hash, user_id, has_next_page, after):
-    '''
+    """
     解析利用js动态生成的博主内容
     :param query_hash: 哈希码
     :param user_id: 博主ID
     :param has_next_page: 有无下一页
     :param after: 游标
-    :return:
-    '''
+    """
     global pic_video_cnt, pic_video_uris
     url = 'https://www.instagram.com/graphql/query/?'
     # TODO::自己解析的query_hash值有问题
@@ -189,11 +188,11 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
 
 
 def mkdir_save_path(url):
-    '''
+    """
     可选调用函数，创建图片、视频 保存目录
     :param url: 博主主页
     :return: 图片、视频保存路径
-    '''
+    """
     DATA_BASE_DIR = '{}/data/'.format(BASE_DIR)
     if not os.path.exists(DATA_BASE_DIR):
         os.mkdir(DATA_BASE_DIR)
@@ -209,23 +208,12 @@ def mkdir_save_path(url):
     return save_pic_path, save_video_path
 
 
-# TODO::方法实现有问题，相同str会有不同的hash值，未解决
-def md5(string):
-    ''''''
-    m = hashlib.md5()
-    m.update(string.encode("utf8"))
-    # print(m.hexdigest())
-    return m.hexdigest()
-
-
 def save_picture(save_path, uri):
-    '''
+    """
     保存图片
     :param save_path: 图片保存路径
     :param uri: 图片标识符
-    :return:
-    '''
-    # pic_name = '{}.jpg'.format(md5(uri))
+    """
     print('Downloading picture: {}'.format(uri))
     content = get_page_content(uri, headers=headers, proxies=proxies)
     pic_name = '{}.jpg'.format(hashlib.md5(content).hexdigest())
@@ -235,13 +223,11 @@ def save_picture(save_path, uri):
 
 
 def save_video(save_path, uri):
-    '''
+    """
     保存视频
     :param save_path: 视频保存路径
     :param uri: 视频标识符
-    :return:
-    '''
-    # video_name = '{}.jpg'.format(md5(uri))
+    """
     print('Downloading video: {}'.format(uri))
     content = get_page_content(uri, headers=headers, proxies=proxies)
     video_name = '{}.mp4'.format(hashlib.md5(content).hexdigest())
@@ -251,35 +237,33 @@ def save_video(save_path, uri):
 
 
 def save_by_thread(save_pic_path, save_video_path, uris):
-    '''
+    """
     利用多线程下载图片、视频（整体速度偏快）（推荐）
     :param save_pic_path: 图片保存路径
     :param save_video_path: 视频保存路径
     :param uris: 图片、视频标识符
-    :return:
-    '''
+    """
     t_objs = []
     pic_uris, video_uris = uris.values()
     for pic_uri in pic_uris:
         t = threading.Thread(target=save_picture, args=(save_pic_path, pic_uri))
         t.start()
         t_objs.append(t)
-    for video_uri in video_uris:
-        t = threading.Thread(target=save_video, args=(save_video_path, video_uri))
-        t.start()
-        t_objs.append(t)
+    # for video_uri in video_uris:
+    #     t = threading.Thread(target=save_video, args=(save_video_path, video_uri))
+    #     t.start()
+    #     t_objs.append(t)
     for t in t_objs:
         t.join()
 
 
 def save_by_timeline(save_pic_path, save_video_path, uris):
-    '''
+    """
     按照时间线下载图片、视频（整体速度慢）
     :param save_pic_path: 图片保存路径
     :param save_video_path: 视频保存路径
     :param uris: 图片、视频标识符
-    :return:
-    '''
+    """
     pic_uris, video_uris = uris.values()
     for pic_uri in pic_uris:
         save_picture(save_pic_path, pic_uri)
@@ -307,9 +291,13 @@ def run():
     return count == crawl_count
 
 
-if __name__ == '__main__':
+def spider():
     if run():
         print('Data crawl completed！')
     else:
         # raise ValueError('爬取数据与实际数据不匹配')
         raise ValueError('The crawl data does not match the actual data')
+
+
+if __name__ == '__main__':
+    spider()

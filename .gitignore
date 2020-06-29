@@ -3,3 +3,4 @@ data/
 __pycache__/
 *.json
 config.py
+test*.py
