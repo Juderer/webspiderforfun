@@ -1,6 +1,7 @@
 .idea/
 data/
 __pycache__/
+build/
 *.json
 config.py
 test*.py
