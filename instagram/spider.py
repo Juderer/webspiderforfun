@@ -150,7 +150,9 @@ def parse_next_page(query_hash, user_id, has_next_page, after):
         # TODO::first为12时，会报错，未排查问题
         params = {
             'query_hash': query_hash,
-            # 大括号是特殊转义字符，如果需要原始的大括号,用{{代替{
+            # 背景：使用str.format输出花括号本身
+            # 花括号是特殊转义字符，如果需要原始的花括号,用{{代替{
+            # 若使用'{%s}' % 'str'，则不受上述影响
             'variables': '{{"id":"{id}","first":50,"after":"{after}"}}'
                 .format(id=user_id, after=after),
         }
