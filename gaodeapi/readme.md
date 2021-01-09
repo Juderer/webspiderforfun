@@ -11,9 +11,9 @@
 
 ## utils.py
 
-|类|说明|
-|:---:|:---:|
-|GISUtil|此类用于百度坐标系（BD-09）、火星坐标系（GCJ02、国测局坐标系，高德等公司使用）、WGS84坐标系的相互转换|
+|类|说明|备注|
+|:---:|:---:|:---:|
+|CrdntSysUtil|此类用于百度坐标系（BD-09）、火星坐标系（GCJ02、国测局坐标系，高德等公司使用）、WGS84坐标系的相互转换|CopyFrom: https://github.com/tianyuningmou/Coord_Transform|
 
 ## spider_location_lon_lat.py
 

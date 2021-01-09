@@ -49,7 +49,7 @@ class GeoLocation(object):
         return ','.join(str(x) for x in [self.lon_wgs84, self.lat_wgs84])
 
     def __str__(self):
-        geo_location_msgs = [self.addr, self.lon_gcj02, self.lat_gcj02]  # 默认以GCJ编码格式输出
+        geo_location_msgs = [self.addr, self.lon_gcj02, self.lat_gcj02]  # 默认以GCJ02编码格式输出
         return ','.join((str(x) for x in geo_location_msgs))
 
 
