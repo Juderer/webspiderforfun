@@ -6,3 +6,4 @@ build/
 config.py
 test*.py
 *conf.txt
+*.csv

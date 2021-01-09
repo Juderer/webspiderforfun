@@ -1,7 +1,7 @@
 # webspiderforfun
 dev branch
 
-## 1. instagram
+## 1. Instagram
 
 爬取ins博主照片。
 
@@ -14,7 +14,7 @@ dev branch
 * 考虑支持多个用户内容同时爬取
 * **socks5**/**v2ray**/**http代理**等网络知识的进一步理解与探索
 
-## 2. gaode API
+## 2. Open Map API
 
 ### 写在前面
 
